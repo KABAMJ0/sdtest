@@ -5,126 +5,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Steam Deck Battery Calculator</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #1b2838; /* Steam dark blue */
-            color: #c7d5e0; /* Steam light blue */
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .calculator {
-            background-color: #2a475e; /* Steam lighter blue */
-            padding: 20px;
-            border-radius: 20px;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
-            text-align: center;
-            width: 300px;
-            position: relative;
-        }
-
-        .calculator input[type="number"], .calculator input[type="text"], .calculator select {
-            width: 90%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            text-align: center;
-        }
-
-        .calculator button {
-            background-color: #66c0f4; /* Steam button blue */
-            color: #1b2838; /* Steam dark blue */
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        .result {
-            margin-top: 20px;
-            font-size: 18px;
-        }
-
-        .footer {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #8f98a0;
-        }
+        /* Your CSS code here */
     </style>
 </head>
 <body>
     <div class="calculator">
         <h1>Battery Calculator</h1>
-        <!-- Game input fields -->
         <input type="text" id="gameName" placeholder="Game Name">
         <input type="number" id="gamePower" placeholder="Power Draw (W)">
-        <button onclick="addGame()">Add Game</button>
-
-        <!-- Search bar and dropdown to select game -->
-        <input type="text" id="searchGame" placeholder="Search for a game" oninput="searchGames()">
+        <button type="button" onclick="addGame()">Add Game</button>
         <select id="gameList" onchange="updateUsage()">
             <option value="">Select a game...</option>
         </select>
-
         <input type="number" id="usage" placeholder="Enter usage (W)">
-        <button onclick="calculateBatteryLife()">Calculate</button>
-
+        <button type="button" onclick="calculateBatteryLife()">Calculate</button>
         <div class="result" id="result"></div>
         <div class="footer">&copy; Kabamjo 2024. Not associated with Steam or Valve.</div>
     </div>
 
-<!-- End of body before the closing </body> tag -->
-<script type="module">
-    // Firebase configuration
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
+    <script type="module">
+        // Firebase configuration
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyDCy_vhdp8J3g0kWHBR5MwDJdeBw5ZkA1Y",
-        authDomain: "database-e84de.firebaseapp.com",
-        projectId: "database-e84de",
-        storageBucket: "database-e84de.appspot.com",
-        messagingSenderId: "30326298317",
-        appId: "1:30326298317:web:3cbe2cf8f5e8221e10fb84"
-    };
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCy_vhdp8J3g0kWHBR5MwDJdeBw5ZkA1Y",
+            authDomain: "database-e84de.firebaseapp.com",
+            projectId: "database-e84de",
+            storageBucket: "database-e84de.appspot.com",
+            messagingSenderId: "30326298317",
+            appId: "1:30326298317:web:3cbe2cf8f5e8221e10fb84"
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-    // Add game to Firebase
-    async function addGame() {
-        const gameName = document.getElementById('gameName').value.trim();
-        const gamePower = parseFloat(document.getElementById('gamePower').value);
+        // Add game to Firebase
+        async function addGame() {
+            const gameName = document.getElementById('gameName').value.trim();
+            const gamePower = parseFloat(document.getElementById('gamePower').value);
 
-        if (!gameName || isNaN(gamePower) || gamePower < 3 || gamePower > 25) {
-            alert("Please enter a valid game name and wattage (between 3W and 25W).");
-            return;
+            if (!gameName || isNaN(gamePower) || gamePower < 3 || gamePower > 25) {
+                alert("Please enter a valid game name and wattage (between 3W and 25W).");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "games"), { name: gameName, power: gamePower });
+                alert(`Game "${gameName}" with power draw ${gamePower}W added.`);
+                loadGames(); // Refresh the list
+            } catch (error) {
+                console.error("Error adding game:", error);
+                alert("Failed to add game.");
+            }
         }
 
-        try {
-            await addDoc(collection(db, "games"), { name: gameName, power: gamePower });
-            alert(`Game "${gameName}" with power draw ${gamePower}W added.`);
-            loadGames(); // Refresh the list
-        } catch (error) {
-            console.error("Error adding game:", error);
-            alert("Failed to add game.");
+        // Load games from Firebase
+        async function loadGames() {
+            const gameList = document.getElementById('gameList');
+            gameList.innerHTML = '<option value="">Select a game...</option>';
+
+            try {
+                const querySnapshot = await getDocs(collection(db, "games"));
+                querySnapshot.forEach((doc) => {
+                    const game = doc.data();
+                    const option = document.createElement('option');
+                    option.value = game.power;
+                    option.textContent = `${game.name} (${game.power}W)`;
+                    gameList.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading games:", error);
+                alert("Failed to load games.");
+            }
         }
-    }
 
-    // Load games from Firebase
-    async function loadGames() {
-        const gameList = document.getElementById('gameList');
-        gameList.innerHTML = '<option value="">Select a game...</option>';
+        // Search games by name
+        async function searchGames() {
+            const queryStr = document.getElementById('searchGame').value.trim().toLowerCase();
+            const gameList = document.getElementById('gameList');
 
-        try {
-            const querySnapshot = await getDocs(collection(db, "games"));
+            // If the input is empty, don't search and clear the game list
+            if (queryStr === "") {
+                gameList.innerHTML = '<option value="">Select a game...</option>';
+                return;
+            }
+
+            const gamesQuery = query(collection(db, "games"), where("name", ">=", queryStr), where("name", "<=", queryStr + "\uf8ff"));
+            const querySnapshot = await getDocs(gamesQuery);
+
+            gameList.innerHTML = '<option value="">Select a game...</option>';  // Clear previous results
+
             querySnapshot.forEach((doc) => {
                 const game = doc.data();
                 const option = document.createElement('option');
@@ -132,57 +103,30 @@
                 option.textContent = `${game.name} (${game.power}W)`;
                 gameList.appendChild(option);
             });
-        } catch (error) {
-            console.error("Error loading games:", error);
-            alert("Failed to load games.");
-        }
-    }
-
-    // Search games by name
-    async function searchGames() {
-        const queryStr = document.getElementById('searchGame').value.trim().toLowerCase();
-        const gameList = document.getElementById('gameList');
-
-        // If the input is empty, don't search and clear the game list
-        if (queryStr === "") {
-            gameList.innerHTML = '<option value="">Select a game...</option>';
-            return;
         }
 
-        const gamesQuery = query(collection(db, "games"), where("name", ">=", queryStr), where("name", "<=", queryStr + "\uf8ff"));
-        const querySnapshot = await getDocs(gamesQuery);
-
-        gameList.innerHTML = '<option value="">Select a game...</option>';  // Clear previous results
-
-        querySnapshot.forEach((doc) => {
-            const game = doc.data();
-            const option = document.createElement('option');
-            option.value = game.power;
-            option.textContent = `${game.name} (${game.power}W)`;
-            gameList.appendChild(option);
-        });
-    }
-
-    // Update the power usage based on the selected game
-    function updateUsage() {
-        const selectedPower = document.getElementById('gameList').value;
-        document.getElementById('usage').value = selectedPower;
-    }
-
-    // Calculate battery life based on power usage
-    function calculateBatteryLife() {
-        const usage = parseFloat(document.getElementById('usage').value);
-
-        if (!usage || usage <= 0) {
-            document.getElementById('result').textContent = "Please enter a valid usage.";
-            return;
+        // Update the power usage based on the selected game
+        function updateUsage() {
+            const selectedPower = document.getElementById('gameList').value;
+            document.getElementById('usage').value = selectedPower;
         }
 
-        const batteryCapacity = 40; // Default to LCD
-        const batteryLife = (batteryCapacity / usage).toFixed(2); // Hours
-        document.getElementById('result').textContent = `Battery Life: ${batteryLife} hours`;
-    }
+        // Calculate battery life based on power usage
+        function calculateBatteryLife() {
+            const usage = parseFloat(document.getElementById('usage').value);
 
-    // Load games when the page is loaded
-    window.onload = loadGames;
-</script>
+            if (!usage || usage <= 0) {
+                document.getElementById('result').textContent = "Please enter a valid usage.";
+                return;
+            }
+
+            const batteryCapacity = 40; // Default to LCD
+            const batteryLife = (batteryCapacity / usage).toFixed(2); // Hours
+            document.getElementById('result').textContent = `Battery Life: ${batteryLife} hours`;
+        }
+
+        // Load games when the page is loaded
+        window.onload = loadGames;
+    </script>
+</body>
+</html>
