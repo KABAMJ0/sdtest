@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam Deck Battery Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1b2838; /* Steam dark blue */
+            color: #c7d5e0; /* Steam light blue */
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .calculator {
+            background-color: #2a475e; /* Steam lighter blue */
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            width: 300px;
+            position: relative;
+        }
+
+        .calculator input[type="number"], .calculator input[type="text"], .calculator select {
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .calculator button {
+            background-color: #66c0f4; /* Steam button blue */
+            color: #1b2838; /* Steam dark blue */
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #8f98a0;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h1>Battery Calculator</h1>
+        <input type="text" id="gameName" placeholder="Game Name">
+        <input type="number" id="gamePower" placeholder="Power Draw (W)">
+        <button onclick="addGame()">Add Game</button>
+        <select id="gameList" onchange="updateUsage()">
+            <option value="">Select a game...</option>
+        </select>
+        <input type="number" id="usage" placeholder="Enter usage (W)">
+        <button onclick="calculateBatteryLife()">Calculate</button>
+        <div class="result" id="result"></div>
+        <div class="footer">&copy; Kabamjo 2024. Not associated with Steam or Valve.</div>
+    </div>
+
+    <script type="module">
+        // Firebase configuration
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCy_vhdp8J3g0kWHBR5MwDJdeBw5ZkA1Y",
+            authDomain: "database-e84de.firebaseapp.com",
+            projectId: "database-e84de",
+            storageBucket: "database-e84de.appspot.com",
+            messagingSenderId: "30326298317",
+            appId: "1:30326298317:web:3cbe2cf8f5e8221e10fb84"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function addGame() {
+            const gameName = document.getElementById('gameName').value.trim();
+            const gamePower = parseFloat(document.getElementById('gamePower').value);
+
+            if (!gameName || isNaN(gamePower) || gamePower <= 0) {
+                alert("Please enter valid game data.");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "games"), { name: gameName, power: gamePower });
+                alert(`Game "${gameName}" with power draw ${gamePower}W added.`);
+                loadGames(); // Refresh the list
+            } catch (error) {
+                console.error("Error adding game:", error);
+                alert("Failed to add game.");
+            }
+        }
+
+        async function loadGames() {
+            const gameList = document.getElementById('gameList');
+            gameList.innerHTML = '<option value="">Select a game...</option>';
+
+            try {
+                const querySnapshot = await getDocs(collection(db, "games"));
+                querySnapshot.forEach((doc) => {
+                    const game = doc.data();
+                    const option = document.createElement('option');
+                    option.value = game.power;
+                    option.textContent = `${game.name} (${game.power}W)`;
+                    gameList.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading games:", error);
+                alert("Failed to load games.");
+            }
+        }
+
+        function updateUsage() {
+            const selectedPower = document.getElementById('gameList').value;
+            document.getElementById('usage').value = selectedPower;
+        }
+
+        function calculateBatteryLife() {
+            const usage = parseFloat(document.getElementById('usage').value);
+
+            if (!usage || usage <= 0) {
+                document.getElementById('result').textContent = "Please enter a valid usage.";
+                return;
+            }
+
+            const batteryCapacity = 40; // Default to LCD
+            const batteryLife = (batteryCapacity / usage).toFixed(2); // Hours
+            document.getElementById('result').textContent = `Battery Life: ${batteryLife} hours`;
+        }
+
+        // Load games on page load
+        loadGames();
+    </script>
+</body>
+</html>
