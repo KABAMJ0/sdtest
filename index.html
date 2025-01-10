@@ -80,70 +80,51 @@
         <div class="footer">&copy; Kabamjo 2024. Not associated with Steam or Valve.</div>
     </div>
 
-    <script type="module">
-        // Firebase configuration
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
+<!-- End of body before the closing </body> tag -->
+<script type="module">
+    // Firebase configuration
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDCy_vhdp8J3g0kWHBR5MwDJdeBw5ZkA1Y",
-            authDomain: "database-e84de.firebaseapp.com",
-            projectId: "database-e84de",
-            storageBucket: "database-e84de.appspot.com",
-            messagingSenderId: "30326298317",
-            appId: "1:30326298317:web:3cbe2cf8f5e8221e10fb84"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyDCy_vhdp8J3g0kWHBR5MwDJdeBw5ZkA1Y",
+        authDomain: "database-e84de.firebaseapp.com",
+        projectId: "database-e84de",
+        storageBucket: "database-e84de.appspot.com",
+        messagingSenderId: "30326298317",
+        appId: "1:30326298317:web:3cbe2cf8f5e8221e10fb84"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        async function addGame() {
-            const gameName = document.getElementById('gameName').value.trim();
-            const gamePower = parseFloat(document.getElementById('gamePower').value);
+    // Add game to Firebase
+    async function addGame() {
+        const gameName = document.getElementById('gameName').value.trim();
+        const gamePower = parseFloat(document.getElementById('gamePower').value);
 
-            if (!gameName || isNaN(gamePower) || gamePower < 3 || gamePower > 25) {
-                alert("Please enter a valid game name and wattage (between 3W and 25W).");
-                return;
-            }
-
-            try {
-                await addDoc(collection(db, "games"), { name: gameName, power: gamePower });
-                alert(`Game "${gameName}" with power draw ${gamePower}W added.`);
-                loadGames(); // Refresh the list
-            } catch (error) {
-                console.error("Error adding game:", error);
-                alert("Failed to add game.");
-            }
+        if (!gameName || isNaN(gamePower) || gamePower < 3 || gamePower > 25) {
+            alert("Please enter a valid game name and wattage (between 3W and 25W).");
+            return;
         }
 
-        async function loadGames() {
-            const gameList = document.getElementById('gameList');
-            gameList.innerHTML = '<option value="">Select a game...</option>';
-
-            try {
-                const querySnapshot = await getDocs(collection(db, "games"));
-                querySnapshot.forEach((doc) => {
-                    const game = doc.data();
-                    const option = document.createElement('option');
-                    option.value = game.power;
-                    option.textContent = `${game.name} (${game.power}W)`;
-                    gameList.appendChild(option);
-                });
-            } catch (error) {
-                console.error("Error loading games:", error);
-                alert("Failed to load games.");
-            }
+        try {
+            await addDoc(collection(db, "games"), { name: gameName, power: gamePower });
+            alert(`Game "${gameName}" with power draw ${gamePower}W added.`);
+            loadGames(); // Refresh the list
+        } catch (error) {
+            console.error("Error adding game:", error);
+            alert("Failed to add game.");
         }
+    }
 
-        async function searchGames() {
-            const queryStr = document.getElementById('searchGame').value.trim().toLowerCase();
-            const gameList = document.getElementById('gameList');
+    // Load games from Firebase
+    async function loadGames() {
+        const gameList = document.getElementById('gameList');
+        gameList.innerHTML = '<option value="">Select a game...</option>';
 
-            const gamesQuery = query(collection(db, "games"), where("name", ">=", queryStr), where("name", "<=", queryStr + "\uf8ff"));
-            const querySnapshot = await getDocs(gamesQuery);
-
-            gameList.innerHTML = '<option value="">Select a game...</option>';  // Clear previous results
-
+        try {
+            const querySnapshot = await getDocs(collection(db, "games"));
             querySnapshot.forEach((doc) => {
                 const game = doc.data();
                 const option = document.createElement('option');
@@ -151,28 +132,57 @@
                 option.textContent = `${game.name} (${game.power}W)`;
                 gameList.appendChild(option);
             });
+        } catch (error) {
+            console.error("Error loading games:", error);
+            alert("Failed to load games.");
+        }
+    }
+
+    // Search games by name
+    async function searchGames() {
+        const queryStr = document.getElementById('searchGame').value.trim().toLowerCase();
+        const gameList = document.getElementById('gameList');
+
+        // If the input is empty, don't search and clear the game list
+        if (queryStr === "") {
+            gameList.innerHTML = '<option value="">Select a game...</option>';
+            return;
         }
 
-        function updateUsage() {
-            const selectedPower = document.getElementById('gameList').value;
-            document.getElementById('usage').value = selectedPower;
+        const gamesQuery = query(collection(db, "games"), where("name", ">=", queryStr), where("name", "<=", queryStr + "\uf8ff"));
+        const querySnapshot = await getDocs(gamesQuery);
+
+        gameList.innerHTML = '<option value="">Select a game...</option>';  // Clear previous results
+
+        querySnapshot.forEach((doc) => {
+            const game = doc.data();
+            const option = document.createElement('option');
+            option.value = game.power;
+            option.textContent = `${game.name} (${game.power}W)`;
+            gameList.appendChild(option);
+        });
+    }
+
+    // Update the power usage based on the selected game
+    function updateUsage() {
+        const selectedPower = document.getElementById('gameList').value;
+        document.getElementById('usage').value = selectedPower;
+    }
+
+    // Calculate battery life based on power usage
+    function calculateBatteryLife() {
+        const usage = parseFloat(document.getElementById('usage').value);
+
+        if (!usage || usage <= 0) {
+            document.getElementById('result').textContent = "Please enter a valid usage.";
+            return;
         }
 
-        function calculateBatteryLife() {
-            const usage = parseFloat(document.getElementById('usage').value);
+        const batteryCapacity = 40; // Default to LCD
+        const batteryLife = (batteryCapacity / usage).toFixed(2); // Hours
+        document.getElementById('result').textContent = `Battery Life: ${batteryLife} hours`;
+    }
 
-            if (!usage || usage <= 0) {
-                document.getElementById('result').textContent = "Please enter a valid usage.";
-                return;
-            }
-
-            const batteryCapacity = 40; // Default to LCD screen (40Wh)
-            const batteryLife = (batteryCapacity / usage).toFixed(2); // Hours
-            document.getElementById('result').textContent = `Battery Life: ${batteryLife} hours`;
-        }
-
-        // Load games on page load
-        loadGames();
-    </script>
-</body>
-</html>
+    // Load games when the page is loaded
+    window.onload = loadGames;
+</script>
