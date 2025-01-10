@@ -62,14 +62,20 @@
 <body>
     <div class="calculator">
         <h1>Battery Calculator</h1>
+        <!-- Game input fields -->
         <input type="text" id="gameName" placeholder="Game Name">
         <input type="number" id="gamePower" placeholder="Power Draw (W)">
         <button onclick="addGame()">Add Game</button>
+
+        <!-- Search bar and dropdown to select game -->
+        <input type="text" id="searchGame" placeholder="Search for a game" oninput="searchGames()">
         <select id="gameList" onchange="updateUsage()">
             <option value="">Select a game...</option>
         </select>
+
         <input type="number" id="usage" placeholder="Enter usage (W)">
         <button onclick="calculateBatteryLife()">Calculate</button>
+
         <div class="result" id="result"></div>
         <div class="footer">&copy; Kabamjo 2024. Not associated with Steam or Valve.</div>
     </div>
@@ -77,7 +83,7 @@
     <script type="module">
         // Firebase configuration
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.17.2/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDCy_vhdp8J3g0kWHBR5MwDJdeBw5ZkA1Y",
@@ -95,8 +101,8 @@
             const gameName = document.getElementById('gameName').value.trim();
             const gamePower = parseFloat(document.getElementById('gamePower').value);
 
-            if (!gameName || isNaN(gamePower) || gamePower <= 0) {
-                alert("Please enter valid game data.");
+            if (!gameName || isNaN(gamePower) || gamePower < 3 || gamePower > 25) {
+                alert("Please enter a valid game name and wattage (between 3W and 25W).");
                 return;
             }
 
@@ -129,6 +135,24 @@
             }
         }
 
+        async function searchGames() {
+            const queryStr = document.getElementById('searchGame').value.trim().toLowerCase();
+            const gameList = document.getElementById('gameList');
+
+            const gamesQuery = query(collection(db, "games"), where("name", ">=", queryStr), where("name", "<=", queryStr + "\uf8ff"));
+            const querySnapshot = await getDocs(gamesQuery);
+
+            gameList.innerHTML = '<option value="">Select a game...</option>';  // Clear previous results
+
+            querySnapshot.forEach((doc) => {
+                const game = doc.data();
+                const option = document.createElement('option');
+                option.value = game.power;
+                option.textContent = `${game.name} (${game.power}W)`;
+                gameList.appendChild(option);
+            });
+        }
+
         function updateUsage() {
             const selectedPower = document.getElementById('gameList').value;
             document.getElementById('usage').value = selectedPower;
@@ -142,7 +166,7 @@
                 return;
             }
 
-            const batteryCapacity = 40; // Default to LCD
+            const batteryCapacity = 40; // Default to LCD screen (40Wh)
             const batteryLife = (batteryCapacity / usage).toFixed(2); // Hours
             document.getElementById('result').textContent = `Battery Life: ${batteryLife} hours`;
         }
